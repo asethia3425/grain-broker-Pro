@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduQuiz | Dynamic Learning</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="auth-container" class="container">
+        <div class="card auth-card">
+            <h2>Welcome to EduQuiz</h2>
+            <p>Please login to continue</p>
+            <input type="email" id="login-email" placeholder="Email" class="input-field">
+            <input type="password" id="login-password" placeholder="Password" class="input-field">
+            <button class="btn-primary" onclick="handleLogin()">Login</button>
+            <button class="btn-secondary" onclick="handleSignUp()">Create Account</button>
+        </div>
+    </div>
+
+    <div id="main-app" class="hidden">
+        <nav>
+            <div class="container nav-flex">
+                <h1 onclick="renderSubjects()" style="cursor:pointer">EduQuiz</h1>
+                <div id="user-info">
+                    <span id="user-email"></span>
+                    <button onclick="handleLogout()" class="btn-logout">Logout</button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container">
+            <div id="breadcrumb" class="breadcrumb">Home</div>
+            <main id="app-root">
+                </main>
+        </div>
+    </div>
+
+    <script type="module" src="script.js"></script>
+</body>
+</html>
