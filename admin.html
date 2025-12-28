@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Admin Dashboard - GrainBroker Pro</title>
+    <link rel="stylesheet" href="admin-style.css">
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <div id="admin-auth" class="auth-container">
+        <div class="auth-card">
+            <div class="brand-section">
+                <div class="logo-circle">A</div>
+                <h1>Admin Panel</h1>
+                <p style="color: #64748b; font-size: 14px;">GrainBroker Pro</p>
+            </div>
+
+            <div id="admin-login-form">
+                <h3>Admin Login</h3>
+                <input type="email" id="admin-email" placeholder="Admin Email">
+                <input type="password" id="admin-pass" placeholder="Admin Password">
+                <button class="primary-btn" id="btn-admin-login">Sign In as Admin</button>
+            </div>
+        </div>
+    </div>
+
+    <main id="admin-ui" style="display:none;">
+        <header>
+            <span>🔐 Admin Dashboard - GrainBroker Pro</span>
+            <div class="header-right">
+                <span id="admin-name" style="font-weight: bold; margin-right: 10px; color:white;">Admin</span>
+                <button onclick="window.adminLogout()" class="logout-btn">Logout</button>
+            </div>
+        </header>
+
+        <div id="view-overview" class="page-content">
+            <h2>System Overview</h2>
+            
+            <div class="stat-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                <div class="stat-box card">
+                    <small>Total Users</small>
+                    <h2 id="total-users">0</h2>
+                </div>
+                <div class="stat-box card">
+                    <small>Total Bookings</small>
+                    <h2 id="total-bookings">0</h2>
+                </div>
+                <div class="stat-box card">
+                    <small>Total Companies</small>
+                    <h2 id="total-companies">0</h2>
+                </div>
+                <div class="stat-box card">
+                    <small>Total Brokerage</small>
+                    <h2 id="total-brokerage">₹0</h2>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top: 20px;">
+                <h3>Quick Actions</h3>
+                <div class="btn-group">
+                    <button onclick="window.showAdminView('users')" class="action-btn">👥 View All Users</button>
+                    <button onclick="window.showAdminView('bookings')" class="action-btn">📦 View All Bookings</button>
+                    <button onclick="window.showAdminView('companies')" class="action-btn">🏢 View All Companies</button>
+                    <button onclick="window.exportAllData()" class="action-btn excel-btn">📊 Export All Data</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-users" class="page-content" style="display:none;">
+            <div class="header-row">
+                <h2>All Users</h2>
+                <button onclick="window.showAdminView('overview')" class="back-btn">← Back</button>
+            </div>
+            <div id="users-list"></div>
+        </div>
+
+        <div id="view-bookings" class="page-content" style="display:none;">
+            <div class="header-row">
+                <h2>All Bookings</h2>
+                <div>
+                    <select id="user-filter" onchange="window.filterByUser()" style="margin-right: 10px;">
+                        <option value="">All Users</option>
+                    </select>
+                    <button onclick="window.showAdminView('overview')" class="back-btn">← Back</button>
+                </div>
+            </div>
+            <div class="table-container" id="bookings-list"></div>
+        </div>
+
+        <div id="view-companies" class="page-content" style="display:none;">
+            <div class="header-row">
+                <h2>All Companies</h2>
+                <div>
+                    <select id="company-user-filter" onchange="window.filterCompaniesByUser()" style="margin-right: 10px;">
+                        <option value="">All Users</option>
+                    </select>
+                    <button onclick="window.showAdminView('overview')" class="back-btn">← Back</button>
+                </div>
+            </div>
+            <div id="companies-list"></div>
+        </div>
+
+        <nav class="bottom-nav">
+            <div onclick="window.showAdminView('overview')">🏠<span>Overview</span></div>
+            <div onclick="window.showAdminView('users')">👥<span>Users</span></div>
+            <div onclick="window.showAdminView('bookings')">📦<span>Bookings</span></div>
+            <div onclick="window.showAdminView('companies')">🏢<span>Companies</span></div>
+        </nav>
+    </main>
+
+    <div id="modal-user-details" class="modal" style="display:none;">
+        <div class="modal-content">
+            <h3>User Details</h3>
+            <div id="user-details-content"></div>
+            <button onclick="window.closeUserDetailsModal()" class="text-btn">Close</button>
+        </div>
+    </div>
+
+    <script type="module" src="admin.js"></script>
+</body>
+</html>
