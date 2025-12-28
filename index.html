@@ -2,41 +2,271 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EduQuiz | Dynamic Learning</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GrainBroker Pro</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
-    <div id="auth-container" class="container">
-        <div class="card auth-card">
-            <h2>Welcome to EduQuiz</h2>
-            <p>Please login to continue</p>
-            <input type="email" id="login-email" placeholder="Email" class="input-field">
-            <input type="password" id="login-password" placeholder="Password" class="input-field">
-            <button class="btn-primary" onclick="handleLogin()">Login</button>
-            <button class="btn-secondary" onclick="handleSignUp()">Create Account</button>
+    <div id="view-auth" class="page-view auth-container">
+        <div class="auth-card">
+            <div class="brand-section">
+                <div class="logo-circle">G</div>
+                <h1>GrainBroker<span class="pro-tag">PRO</span></h1>
+            </div>
+
+            <div id="login-form">
+                <h3>Welcome Back</h3>
+                <input type="email" id="email" placeholder="Email Address">
+                <input type="password" id="pass" placeholder="Password">
+                <p class="forgot-link" onclick="window.showAuthSubView('forgot')">Forgot Password?</p>
+                <button class="primary-btn" id="btn-login">Sign In</button>
+                <p class="toggle-text">New here? <span class="action-link" onclick="window.showAuthSubView('signup')">Create Account</span></p>
+            </div>
+
+            <div id="signup-form" style="display:none;">
+                <h3>Join GrainBroker</h3>
+                <input type="text" id="reg-name" placeholder="Full Name">
+                <input type="tel" id="reg-phone" placeholder="Phone Number">
+                <input type="email" id="reg-email" placeholder="Email Address">
+                <input type="password" id="reg-pass" placeholder="Password">
+                <button class="primary-btn" id="btn-signup">Register Now</button>
+                <p class="toggle-text">Have an account? <span class="action-link" onclick="window.showAuthSubView('login')">Sign In</span></p>
+            </div>
+
+            <div id="forgot-form" style="display:none;">
+                <h3>Reset Password</h3>
+                <input type="email" id="reset-email" placeholder="Email Address">
+                <button class="primary-btn" id="btn-reset">Send Reset Link</button>
+                <p class="toggle-text"><span class="action-link" onclick="window.showAuthSubView('login')">Back to Login</span></p>
+            </div>
         </div>
     </div>
 
-    <div id="main-app" class="hidden">
-        <nav>
-            <div class="container nav-flex">
-                <h1 onclick="renderSubjects()" style="cursor:pointer">EduQuiz</h1>
-                <div id="user-info">
-                    <span id="user-email"></span>
-                    <button onclick="handleLogout()" class="btn-logout">Logout</button>
+    <main id="app-ui" style="display:none;">
+        <header>
+            <span id="user-display">GrainBroker Pro</span>
+            <div class="header-right">
+                <span id="user-name-label" style="font-weight: bold; margin-right: 10px; color:white;">Loading...</span>
+                <button onclick="window.logout()" class="logout-btn">Logout</button>
+            </div>
+        </header>
+
+        <div id="view-home" class="page-content">
+            <div class="welcome-box card">
+                <h2>Hello! 👋</h2>
+                <p>Track your grain trades easily.</p>
+            </div>
+            <div class="stat-grid">
+                <div class="stat-box card">
+                    <small>Monthly Brokerage</small>
+                    <h2 id="home-brokerage">₹0</h2>
+                </div>
+                <div class="stat-box card">
+                    <small>Weight Shipped</small>
+                    <h2 id="home-qty">0 MT</h2>
                 </div>
             </div>
-        </nav>
+        </div>
 
-        <div class="container">
-            <div id="breadcrumb" class="breadcrumb">Home</div>
-            <main id="app-root">
-                </main>
+        <div id="view-bookings" class="page-content" style="display:none;">
+            <div class="header-row">
+                <h2>Bookings</h2>
+                <div class="btn-group">
+                    <button onclick="window.exportBookings()" class="download-btn excel-btn">Excel</button>
+                    <button onclick="window.showBookingModal()" class="add-btn">+ Add</button>
+                </div>
+            </div>
+            <div class="table-container" id="bookings-table-container"></div>
+        </div>
+
+        <div id="view-companies" class="page-content" style="display:none;">
+            <div class="header-row">
+                <h2>Companies</h2>
+                <button onclick="window.showCompanyModal()" class="add-btn">+ Add</button>
+            </div>
+            <div id="companies-list"></div>
+        </div>
+
+        <div id="view-analytics" class="page-content" style="display:none;">
+            <div class="header-row">
+                <h2>Analytics</h2>
+                <div class="btn-group">
+                    <button onclick="window.changeChartPeriod('month')" class="filter-btn active" id="btn-month">Last Month</button>
+                    <button onclick="window.changeChartPeriod('year')" class="filter-btn" id="btn-year">Last Year</button>
+                    <button onclick="window.downloadReport()" class="download-btn img-btn">Save Image</button>
+                </div>
+            </div>
+            
+            <div class="card filter-section">
+                <div class="filter-row">
+                    <span class="filter-label">Filter by Company:</span>
+                    <select id="company-filter" onchange="window.applyCompanyFilter()">
+                        <option value="">All Companies</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div id="report-container" class="card">
+                <div class="stat-grid" style="margin-bottom: 20px;">
+                    <div class="stat-box">
+                        <small>Revenue</small>
+                        <h1 id="stat-brokerage">₹0</h1>
+                    </div>
+                    <div class="stat-box">
+                        <small>Weight</small>
+                        <h1 id="stat-qty">0 MT</h1>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="brokerageChart"></canvas>
+                </div>
+                <div class="chart-container" style="margin-top: 20px;">
+                    <canvas id="quantityChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-templates" class="page-content" style="display:none;">
+            <div class="header-row">
+                <h2>WhatsApp Templates</h2>
+                <button onclick="window.showTemplateModal()" class="add-btn">+ New Template</button>
+            </div>
+            
+            <div class="card" style="margin-bottom: 15px; background: #e8f5e9;">
+                <h4 style="margin-top: 0; color: var(--primary);">📝 Available Variables:</h4>
+                <p style="font-size: 13px; line-height: 1.8; color: #1e293b;">
+                    <code>{companyName}</code> <code>{clientName}</code> <code>{grain}</code> 
+                    <code>{quantity}</code> <code>{price}</code> <code>{brokerage%}</code> 
+                    <code>{brokerageAmount}</code> <code>{fromCompany}</code> <code>{toCompany}</code> 
+                    <code>{date}</code>
+                </p>
+            </div>
+            
+            <div id="templates-list"></div>
+        </div>
+
+        <nav class="bottom-nav">
+            <div onclick="window.showView('home')">🏠<span>Home</span></div>
+            <div onclick="window.showView('bookings')">📦<span>Bookings</span></div>
+            <div onclick="window.showView('companies')">🏢<span>Companies</span></div>
+            <div onclick="window.showView('analytics')">📊<span>Analytics</span></div>
+            <div onclick="window.showView('templates')">💬<span>Templates</span></div>
+        </nav>
+    </main>
+
+    <div id="modal-company" class="modal" style="display:none;">
+        <div class="modal-content">
+            <h3 id="company-modal-title">Add New Company</h3>
+            <input type="text" id="comp-name" placeholder="Company Name *">
+            <input type="tel" id="comp-phone" placeholder="Phone *">
+            <input type="text" id="comp-client" placeholder="Client Name *">
+            <input type="text" id="comp-state" placeholder="State">
+            <button class="primary-btn" onclick="window.saveCompany()">Save Company</button>
+            <button onclick="window.closeCompanyModal()" class="text-btn">Cancel</button>
         </div>
     </div>
 
-    <script type="module" src="script.js"></script>
+    <div id="modal-booking" class="modal" style="display:none;">
+        <div class="modal-content">
+            <h3 id="booking-modal-title">New Booking</h3>
+            <input list="grain-list" id="book-grain" placeholder="Grain Type *">
+            <datalist id="grain-list">
+                <option value="Wheat"><option value="Rice"><option value="Maize">
+            </datalist>
+            <input type="number" id="book-qty" placeholder="Qty (MT) *">
+            <input type="number" id="book-price" placeholder="Price (₹) *">
+            <input type="number" id="book-perc" placeholder="Brokerage % *">
+            <select id="book-from"><option value="">From Company *</option></select>
+            <select id="book-to"><option value="">To Company *</option></select>
+            <button class="primary-btn" onclick="window.saveBooking()">Save Booking</button>
+            <button class="text-btn" onclick="window.closeBookingModal()">Cancel</button>
+        </div>
+    </div>
+
+    <div id="modal-confirm" class="modal" style="display:none;">
+        <div class="modal-content" style="text-align: center;">
+            <h3>Delete Booking?</h3>
+            <button class="primary-btn" style="background: var(--danger);" onclick="window.confirmDelete()">Yes, Delete</button>
+            <button onclick="window.closeConfirmModal()" class="text-btn">Cancel</button>
+        </div>
+    </div>
+
+    <div id="modal-confirm-company" class="modal" style="display:none;">
+        <div class="modal-content" style="text-align: center;">
+            <h3>Delete Company?</h3>
+            <p>Removing this company may affect associated records.</p>
+            <button class="primary-btn" style="background: var(--danger);" onclick="window.confirmDeleteCompany()">Yes, Delete</button>
+            <button onclick="window.closeConfirmCompanyModal()" class="text-btn">Cancel</button>
+        </div>
+    </div>
+
+    <div id="modal-whatsapp" class="modal" style="display:none;">
+        <div class="modal-content">
+            <h3>Send WhatsApp Notification</h3>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="font-weight: 600; display: block; margin-bottom: 5px;">Select Template:</label>
+                <select id="wa-template-select" onchange="window.onTemplateChange()" style="width: 100%;">
+                    <option value="">Default Template</option>
+                </select>
+            </div>
+            
+            <p style="margin-bottom: 15px; color: #64748b;">Select recipients:</p>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display: flex; align-items: center; padding: 10px; background: #f1f5f9; border-radius: 8px; cursor: pointer;">
+                    <input type="checkbox" id="wa-from" style="margin-right: 10px; width: auto;" checked>
+                    <span><strong>From:</strong> <span id="wa-from-name"></span></span>
+                </label>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display: flex; align-items: center; padding: 10px; background: #f1f5f9; border-radius: 8px; cursor: pointer;">
+                    <input type="checkbox" id="wa-to" style="margin-right: 10px; width: auto;" checked>
+                    <span><strong>To:</strong> <span id="wa-to-name"></span></span>
+                </label>
+            </div>
+            
+            <div style="background: #e8f5e9; padding: 15px; border-radius: 12px; margin-bottom: 15px;">
+                <p style="font-weight: 600; margin-bottom: 10px; color: var(--primary);">Preview Message:</p>
+                <div id="wa-preview" style="font-size: 14px; line-height: 1.6; color: #1e293b; white-space: pre-wrap;"></div>
+            </div>
+            
+            <button class="primary-btn" style="background: #25D366;" onclick="window.sendWhatsAppMessages()">
+                📱 Send WhatsApp Messages
+            </button>
+            <button onclick="window.closeWhatsAppModal()" class="text-btn">Cancel</button>
+        </div>
+    </div>
+
+    <div id="modal-template" class="modal" style="display:none;">
+        <div class="modal-content">
+            <h3 id="template-modal-title">Create Template</h3>
+            <input type="text" id="template-name" placeholder="Template Name *">
+            <select id="template-type">
+                <option value="sender">For Sender (From Company)</option>
+                <option value="receiver">For Receiver (To Company)</option>
+                <option value="both">For Both (Same Message)</option>
+            </select>
+            <textarea id="template-content" placeholder="Template Message *&#10;&#10;Use variables like {grain}, {quantity}, {companyName}, etc." style="min-height: 200px; font-family: monospace; resize: vertical;"></textarea>
+            <button class="primary-btn" onclick="window.saveTemplate()">Save Template</button>
+            <button onclick="window.closeTemplateModal()" class="text-btn">Cancel</button>
+        </div>
+    </div>
+
+    <div id="modal-confirm-template" class="modal" style="display:none;">
+        <div class="modal-content" style="text-align: center;">
+            <h3>Delete Template?</h3>
+            <p>This action cannot be undone.</p>
+            <button class="primary-btn" style="background: var(--danger);" onclick="window.confirmDeleteTemplate()">Yes, Delete</button>
+            <button onclick="window.closeConfirmTemplateModal()" class="text-btn">Cancel</button>
+        </div>
+    </div>
+
+    <script type="module" src="app.js"></script>
 </body>
 </html>
