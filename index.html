@@ -60,6 +60,7 @@
                 <h2>Hello! 👋</h2>
                 <p>Track your grain trades easily.</p>
             </div>
+            
             <div class="stat-grid">
                 <div class="stat-box card">
                     <small>Monthly Brokerage</small>
@@ -70,12 +71,27 @@
                     <h2 id="home-qty">0 MT</h2>
                 </div>
             </div>
+
+            <div class="card ai-insights-card" style="margin-top: 20px; background: linear-gradient(135deg, #e8f5e9 0%, #f1f8f4 100%); border-left: 4px solid var(--primary);">
+                <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <span style="font-size: 24px; margin-right: 10px;">🤖</span>
+                    <h3 style="margin: 0; color: var(--primary);">AI-Powered Insights</h3>
+                </div>
+                <div id="ai-insights-content">
+                    <div style="text-align: center; padding: 20px; color: #64748b;">
+                        <div class="loading-spinner"></div>
+                        <p>Analyzing your booking patterns...</p>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div id="view-bookings" class="page-content" style="display:none;">
             <div class="header-row">
                 <h2>Bookings</h2>
                 <div class="btn-group">
+                    <button onclick="window.downloadTemplate()" class="download-btn" style="background: #6366f1;">📄 Template</button>
+                    <button onclick="window.showBulkUploadModal()" class="download-btn" style="background: #8b5cf6;">📤 Bulk Upload</button>
                     <button onclick="window.exportBookings()" class="download-btn excel-btn">Excel</button>
                     <button onclick="window.showBookingModal()" class="add-btn">+ Add</button>
                 </div>
@@ -264,6 +280,40 @@
             <p>This action cannot be undone.</p>
             <button class="primary-btn" style="background: var(--danger);" onclick="window.confirmDeleteTemplate()">Yes, Delete</button>
             <button onclick="window.closeConfirmTemplateModal()" class="text-btn">Cancel</button>
+        </div>
+    </div>
+
+    <div id="modal-bulk-upload" class="modal" style="display:none;">
+        <div class="modal-content">
+            <h3>📤 Bulk Upload Bookings</h3>
+            <p style="color: #64748b; font-size: 14px; margin-bottom: 15px;">Upload your historical bookings from an Excel file. Make sure all companies exist before uploading.</p>
+            
+            <div style="background: #fef3c7; padding: 12px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #f59e0b;">
+                <p style="margin: 0; font-size: 13px; color: #92400e;">
+                    <strong>⚠️ Important:</strong> Download the template first and fill it with your data. All company names must match exactly with companies in your database.
+                </p>
+            </div>
+
+            <div style="background: #e0e7ff; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                <p style="margin: 0 0 8px 0; font-weight: 600; color: #3730a3;">📋 Required Columns:</p>
+                <p style="margin: 0; font-size: 13px; color: #4338ca;">
+                    Date, Grain, Quantity (MT), Price (₹), Brokerage %, From Company, To Company
+                </p>
+            </div>
+
+            <input type="file" id="bulk-upload-file" accept=".xlsx,.xls" style="margin: 15px 0; padding: 10px; border: 2px dashed #cbd5e1; border-radius: 8px; width: 100%; box-sizing: border-box;">
+            
+            <div id="upload-progress" style="display: none; margin: 15px 0;">
+                <div style="background: #f1f5f9; border-radius: 8px; height: 8px; overflow: hidden;">
+                    <div id="upload-progress-bar" style="background: var(--primary); height: 100%; width: 0%; transition: width 0.3s;"></div>
+                </div>
+                <p id="upload-status" style="text-align: center; margin-top: 8px; font-size: 13px; color: #64748b;"></p>
+            </div>
+
+            <button class="primary-btn" onclick="window.processBulkUpload()" style="background: #8b5cf6;">
+                📤 Upload & Process
+            </button>
+            <button onclick="window.closeBulkUploadModal()" class="text-btn">Cancel</button>
         </div>
     </div>
 

@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, doc, updateDoc, deleteDoc, getDoc, setDoc, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, doc, updateDoc, deleteDoc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyB1WNyH2I3qjYxZdmwlBghpVyRgFj19UMs",
@@ -99,12 +99,7 @@ window.showView = (view) => {
 
 // --- DATA LOGIC ---
 async function loadData() {
-    const user = auth.currentUser;
-    if (!user) return;
-
-    // Filter Companies by userId
-    const companiesQuery = query(collection(db, "companies"), where("userId", "==", user.uid));
-    onSnapshot(companiesQuery, (snap) => {
+    onSnapshot(collection(db, "companies"), (snap) => {
         companiesData = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
         updateDropdowns();
         renderCompanies();
@@ -112,14 +107,7 @@ async function loadData() {
             updateCompanyFilterDropdown();
         }
     });
-
-    // Filter Bookings by userId
-    const bookingsQuery = query(
-        collection(db, "bookings"), 
-        where("userId", "==", user.uid), 
-        orderBy("timestamp", "desc")
-    );
-    onSnapshot(bookingsQuery, (snap) => {
+    onSnapshot(query(collection(db, "bookings"), orderBy("timestamp", "desc")), (snap) => {
         bookingsData = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
         renderBookings();
         calculateStats();
@@ -127,10 +115,7 @@ async function loadData() {
             renderCharts();
         }
     });
-
-    // Filter Templates by userId
-    const templatesQuery = query(collection(db, "templates"), where("userId", "==", user.uid));
-    onSnapshot(templatesQuery, (snap) => {
+    onSnapshot(collection(db, "templates"), (snap) => {
         templatesData = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
         renderTemplates();
         updateTemplateDropdown();
@@ -174,13 +159,7 @@ window.saveCompany = async () => {
     const client = document.getElementById('comp-client').value.trim();
     const state = document.getElementById('comp-state').value;
     if(!name || !phone || !client) return alert("Fill mandatory fields!");
-    
-    const data = { 
-        name, phone, client, state, 
-        updatedAt: serverTimestamp(),
-        userId: auth.currentUser.uid 
-    };
-    
+    const data = { name, phone, client, state, updatedAt: serverTimestamp() };
     try {
         if(editCompanyId) { 
             await updateDoc(doc(db, "companies", editCompanyId), data); 
@@ -221,15 +200,7 @@ window.saveBooking = async () => {
     const from = document.getElementById('book-from').value;
     const to = document.getElementById('book-to').value;
     if(!grain || isNaN(qty) || isNaN(price) || isNaN(perc) || !from || !to) return alert("Fill mandatory fields!");
-    
-    const data = { 
-        grain, qty, price, perc, 
-        brokerage: (qty * price * (perc/100)), 
-        from, to, 
-        timestamp: serverTimestamp(),
-        userId: auth.currentUser.uid
-    };
-
+    const data = { grain, qty, price, perc, brokerage: (qty * price * (perc/100)), from, to, timestamp: serverTimestamp() };
     try {
         if(editBookingId) { 
             await updateDoc(doc(db, "bookings", editBookingId), data); 
@@ -312,6 +283,211 @@ function calculateStats() {
     const filteredQStr = `${filteredQ} MT`;
     document.getElementById('stat-brokerage').innerText = filteredBStr;
     document.getElementById('stat-qty').innerText = filteredQStr;
+    
+    // Generate AI insights
+    generateAIInsights();
+}
+
+// --- AI INSIGHTS ---
+function generateAIInsights() {
+    const container = document.getElementById('ai-insights-content');
+    if(!container) return;
+    
+    if(bookingsData.length < 3) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: #64748b;">
+                <p>📊 Need at least 3 bookings to generate AI insights</p>
+                <small>Add more bookings to see intelligent predictions!</small>
+            </div>
+        `;
+        return;
+    }
+    
+    const insights = analyzeBookingPatterns();
+    
+    if(insights.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: #64748b;">
+                <p>📈 Not enough data patterns yet</p>
+                <small>Keep adding bookings to improve predictions!</small>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '<div style="margin-bottom: 10px; color: #64748b; font-size: 13px;">Based on your historical booking patterns:</div>';
+    
+    insights.forEach((insight, index) => {
+        const confidenceClass = insight.confidence >= 70 ? 'confidence-high' : 
+                               insight.confidence >= 50 ? 'confidence-medium' : 'confidence-low';
+        const confidenceText = insight.confidence >= 70 ? 'High' : 
+                              insight.confidence >= 50 ? 'Medium' : 'Low';
+        
+        html += `
+            <div class="insight-item">
+                <div class="insight-header">
+                    <strong style="color: var(--primary); font-size: 15px;">${index + 1}. ${insight.company}</strong>
+                    <span class="confidence-badge ${confidenceClass}">${confidenceText} Confidence</span>
+                </div>
+                <div style="font-size: 14px; color: #475569; margin-bottom: 5px;">
+                    🌾 <strong>Grain:</strong> ${insight.grain}
+                </div>
+                <div style="font-size: 13px; color: #64748b;">
+                    📊 ${insight.reason}
+                </div>
+                <div style="font-size: 12px; color: #94a3b8; margin-top: 5px;">
+                    💡 Avg Quantity: ${insight.avgQuantity} MT | Avg Brokerage: ₹${insight.avgBrokerage}
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+function analyzeBookingPatterns() {
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const currentMonth = today.getMonth();
+    
+    // Analyze company-grain combinations
+    const patterns = {};
+    
+    bookingsData.forEach(booking => {
+        let bookingDate;
+        
+        // Use bookingDate if available (from bulk upload), otherwise use timestamp
+        if(booking.bookingDate) {
+            bookingDate = new Date(booking.bookingDate);
+        } else if(booking.timestamp && booking.timestamp.toDate) {
+            bookingDate = booking.timestamp.toDate();
+        } else {
+            return; // Skip if no date available
+        }
+        
+        const bookingDay = bookingDate.getDay();
+        const bookingMonth = bookingDate.getMonth();
+        
+        // Create unique key for company-grain combination
+        const fromKey = `${booking.from}-${booking.grain}`;
+        const toKey = `${booking.to}-${booking.grain}`;
+        
+        // Analyze "from" company
+        if(!patterns[fromKey]) {
+            patterns[fromKey] = {
+                company: booking.from,
+                grain: booking.grain,
+                count: 0,
+                sameDayCount: 0,
+                sameMonthCount: 0,
+                totalQuantity: 0,
+                totalBrokerage: 0,
+                lastBookingDate: null
+            };
+        }
+        patterns[fromKey].count++;
+        patterns[fromKey].totalQuantity += booking.qty || 0;
+        patterns[fromKey].totalBrokerage += booking.brokerage || 0;
+        if(bookingDay === dayOfWeek) patterns[fromKey].sameDayCount++;
+        if(bookingMonth === currentMonth) patterns[fromKey].sameMonthCount++;
+        if(!patterns[fromKey].lastBookingDate || bookingDate > patterns[fromKey].lastBookingDate) {
+            patterns[fromKey].lastBookingDate = bookingDate;
+        }
+        
+        // Analyze "to" company
+        if(!patterns[toKey]) {
+            patterns[toKey] = {
+                company: booking.to,
+                grain: booking.grain,
+                count: 0,
+                sameDayCount: 0,
+                sameMonthCount: 0,
+                totalQuantity: 0,
+                totalBrokerage: 0,
+                lastBookingDate: null
+            };
+        }
+        patterns[toKey].count++;
+        patterns[toKey].totalQuantity += booking.qty || 0;
+        patterns[toKey].totalBrokerage += booking.brokerage || 0;
+        if(bookingDay === dayOfWeek) patterns[toKey].sameDayCount++;
+        if(bookingMonth === currentMonth) patterns[toKey].sameMonthCount++;
+        if(!patterns[toKey].lastBookingDate || bookingDate > patterns[toKey].lastBookingDate) {
+            patterns[toKey].lastBookingDate = bookingDate;
+        }
+    });
+    
+    // Calculate insights with confidence scores
+    const insights = [];
+    
+    for(let key in patterns) {
+        const pattern = patterns[key];
+        
+        // Skip if less than 2 bookings
+        if(pattern.count < 2) continue;
+        
+        // Calculate confidence based on multiple factors
+        let confidence = 0;
+        let reason = '';
+        
+        // Factor 1: Same day of week pattern (30% weight)
+        const sameDayPercentage = (pattern.sameDayCount / pattern.count) * 100;
+        if(sameDayPercentage >= 50) {
+            confidence += 30 * (sameDayPercentage / 100);
+            reason = `Frequently books on ${getDayName(dayOfWeek)}s`;
+        }
+        
+        // Factor 2: Recent activity (30% weight)
+        if(pattern.lastBookingDate) {
+            const daysSinceLastBooking = Math.floor((today - pattern.lastBookingDate) / (1000 * 60 * 60 * 24));
+            if(daysSinceLastBooking <= 7) {
+                confidence += 30;
+                reason = reason ? `${reason}. Recent booking ${daysSinceLastBooking} days ago` : `Recent booking ${daysSinceLastBooking} days ago`;
+            } else if(daysSinceLastBooking <= 14) {
+                confidence += 20;
+                reason = reason ? `${reason}. Last booking ${daysSinceLastBooking} days ago` : `Last booking ${daysSinceLastBooking} days ago`;
+            } else if(daysSinceLastBooking <= 30) {
+                confidence += 10;
+                reason = reason ? `${reason}. Active within last month` : `Active within last month`;
+            }
+        }
+        
+        // Factor 3: Same month activity (20% weight)
+        const sameMonthPercentage = (pattern.sameMonthCount / pattern.count) * 100;
+        if(sameMonthPercentage >= 30) {
+            confidence += 20 * (sameMonthPercentage / 100);
+        }
+        
+        // Factor 4: Frequency (20% weight)
+        if(pattern.count >= 5) {
+            confidence += 20;
+            reason = reason ? `${reason}. ${pattern.count} total bookings` : `${pattern.count} total bookings with this grain`;
+        } else if(pattern.count >= 3) {
+            confidence += 10;
+            reason = reason ? `${reason}. ${pattern.count} bookings` : `${pattern.count} bookings with this grain`;
+        }
+        
+        // Only include if confidence is reasonable
+        if(confidence >= 40) {
+            insights.push({
+                company: pattern.company,
+                grain: pattern.grain,
+                confidence: Math.round(confidence),
+                reason: reason || 'Regular booking pattern detected',
+                avgQuantity: Math.round(pattern.totalQuantity / pattern.count),
+                avgBrokerage: Math.round(pattern.totalBrokerage / pattern.count).toLocaleString('en-IN')
+            });
+        }
+    }
+    
+    // Sort by confidence and return top 3
+    insights.sort((a, b) => b.confidence - a.confidence);
+    return insights.slice(0, 3);
+}
+
+function getDayName(day) {
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    return days[day];
 }
 
 function getFilteredBookings() {
@@ -714,11 +890,7 @@ window.saveTemplate = async () => {
     
     if(!name || !content) return alert("Please fill all fields!");
     
-    const data = { 
-        name, type, content, 
-        updatedAt: serverTimestamp(),
-        userId: auth.currentUser.uid 
-    };
+    const data = { name, type, content, updatedAt: serverTimestamp() };
     
     try {
         if(editTemplateId) {
@@ -781,21 +953,220 @@ window.exportBookings = () => {
     }
     
     const exportData = bookingsData.map(booking => ({
+        'Date': booking.timestamp && booking.timestamp.toDate ? 
+                booking.timestamp.toDate().toLocaleDateString('en-IN') : 'N/A',
         'Grain': booking.grain,
         'Quantity (MT)': booking.qty,
         'Price (₹)': booking.price,
         'Brokerage %': booking.perc,
         'Brokerage Amount (₹)': booking.brokerage ? booking.brokerage.toFixed(2) : 0,
-        'From': booking.from,
-        'To': booking.to,
-        'Date': booking.timestamp && booking.timestamp.toDate ? 
-                booking.timestamp.toDate().toLocaleDateString('en-IN') : 'N/A'
+        'From Company': booking.from,
+        'To Company': booking.to
     }));
     
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Bookings");
     XLSX.writeFile(wb, `Grain_Bookings_${new Date().toLocaleDateString('en-IN').replace(/\//g, '-')}.xlsx`);
+};
+
+// --- BULK UPLOAD ---
+window.downloadTemplate = () => {
+    const templateData = [
+        {
+            'Date': '29/12/2024',
+            'Grain': 'Wheat',
+            'Quantity (MT)': 100,
+            'Price (₹)': 2500,
+            'Brokerage %': 2,
+            'From Company': 'ABC Traders',
+            'To Company': 'XYZ Mills'
+        },
+        {
+            'Date': '28/12/2024',
+            'Grain': 'Rice',
+            'Quantity (MT)': 150,
+            'Price (₹)': 3000,
+            'Brokerage %': 2.5,
+            'From Company': 'DEF Suppliers',
+            'To Company': 'GHI Industries'
+        }
+    ];
+    
+    const ws = XLSX.utils.json_to_sheet(templateData);
+    
+    // Add column widths
+    ws['!cols'] = [
+        { wch: 12 }, // Date
+        { wch: 10 }, // Grain
+        { wch: 15 }, // Quantity
+        { wch: 12 }, // Price
+        { wch: 13 }, // Brokerage %
+        { wch: 20 }, // From Company
+        { wch: 20 }  // To Company
+    ];
+    
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Bookings Template");
+    XLSX.writeFile(wb, "GrainBroker_Bulk_Upload_Template.xlsx");
+};
+
+window.showBulkUploadModal = () => {
+    document.getElementById('bulk-upload-file').value = '';
+    document.getElementById('upload-progress').style.display = 'none';
+    document.getElementById('modal-bulk-upload').style.display = 'flex';
+};
+
+window.closeBulkUploadModal = () => {
+    document.getElementById('modal-bulk-upload').style.display = 'none';
+};
+
+window.processBulkUpload = async () => {
+    const fileInput = document.getElementById('bulk-upload-file');
+    const file = fileInput.files[0];
+    
+    if(!file) {
+        return alert("Please select an Excel file to upload!");
+    }
+    
+    // Show progress
+    document.getElementById('upload-progress').style.display = 'block';
+    document.getElementById('upload-progress-bar').style.width = '10%';
+    document.getElementById('upload-status').innerText = 'Reading file...';
+    
+    try {
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data);
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        
+        if(jsonData.length === 0) {
+            throw new Error("Excel file is empty!");
+        }
+        
+        document.getElementById('upload-progress-bar').style.width = '30%';
+        document.getElementById('upload-status').innerText = `Found ${jsonData.length} rows. Validating...`;
+        
+        // Validate required columns
+        const requiredColumns = ['Date', 'Grain', 'Quantity (MT)', 'Price (₹)', 'Brokerage %', 'From Company', 'To Company'];
+        const firstRow = jsonData[0];
+        const missingColumns = requiredColumns.filter(col => !(col in firstRow));
+        
+        if(missingColumns.length > 0) {
+            throw new Error(`Missing columns: ${missingColumns.join(', ')}. Please use the template!`);
+        }
+        
+        // Extract all company names from the data
+        const allCompaniesInFile = new Set();
+        jsonData.forEach(row => {
+            if(row['From Company']) allCompaniesInFile.add(row['From Company'].trim());
+            if(row['To Company']) allCompaniesInFile.add(row['To Company'].trim());
+        });
+        
+        // Check if all companies exist in database
+        const existingCompanyNames = companiesData.map(c => c.name);
+        const missingCompanies = Array.from(allCompaniesInFile).filter(
+            companyName => !existingCompanyNames.includes(companyName)
+        );
+        
+        if(missingCompanies.length > 0) {
+            document.getElementById('upload-progress').style.display = 'none';
+            const companyList = missingCompanies.map(c => `• ${c}`).join('\n');
+            alert(`⚠️ The following companies are not in your database:\n\n${companyList}\n\nPlease add these companies first before uploading bookings.`);
+            return;
+        }
+        
+        document.getElementById('upload-progress-bar').style.width = '50%';
+        document.getElementById('upload-status').innerText = 'All companies validated! Processing bookings...';
+        
+        // Process and upload bookings
+        let successCount = 0;
+        let errorCount = 0;
+        const errors = [];
+        
+        for(let i = 0; i < jsonData.length; i++) {
+            const row = jsonData[i];
+            
+            try {
+                // Parse date (supports DD/MM/YYYY format)
+                let bookingDate;
+                if(row['Date']) {
+                    const dateParts = row['Date'].toString().split('/');
+                    if(dateParts.length === 3) {
+                        // DD/MM/YYYY
+                        bookingDate = new Date(dateParts[2], dateParts[1] - 1, dateParts[0]);
+                    } else {
+                        // Try parsing as-is
+                        bookingDate = new Date(row['Date']);
+                    }
+                    
+                    if(isNaN(bookingDate.getTime())) {
+                        throw new Error('Invalid date format');
+                    }
+                } else {
+                    bookingDate = new Date(); // Use today if no date provided
+                }
+                
+                const grain = row['Grain']?.toString().trim();
+                const qty = parseFloat(row['Quantity (MT)']);
+                const price = parseFloat(row['Price (₹)']);
+                const perc = parseFloat(row['Brokerage %']);
+                const from = row['From Company']?.toString().trim();
+                const to = row['To Company']?.toString().trim();
+                
+                if(!grain || isNaN(qty) || isNaN(price) || isNaN(perc) || !from || !to) {
+                    throw new Error('Missing or invalid data');
+                }
+                
+                const brokerage = qty * price * (perc / 100);
+                
+                // Create Firestore Timestamp from the booking date
+                const timestamp = serverTimestamp();
+                
+                await addDoc(collection(db, "bookings"), {
+                    grain,
+                    qty,
+                    price,
+                    perc,
+                    brokerage,
+                    from,
+                    to,
+                    timestamp: timestamp,
+                    userId: auth.currentUser.uid,
+                    // Store the actual booking date for AI insights
+                    bookingDate: bookingDate.toISOString()
+                });
+                
+                successCount++;
+            } catch(error) {
+                errorCount++;
+                errors.push(`Row ${i + 2}: ${error.message}`);
+            }
+            
+            // Update progress
+            const progress = 50 + ((i + 1) / jsonData.length * 50);
+            document.getElementById('upload-progress-bar').style.width = `${progress}%`;
+            document.getElementById('upload-status').innerText = `Uploading... ${i + 1}/${jsonData.length}`;
+        }
+        
+        // Show results
+        document.getElementById('upload-progress-bar').style.width = '100%';
+        
+        if(errorCount === 0) {
+            document.getElementById('upload-status').innerText = `✅ Success! ${successCount} bookings uploaded.`;
+            setTimeout(() => {
+                window.closeBulkUploadModal();
+                alert(`🎉 Successfully uploaded ${successCount} bookings!`);
+            }, 2000);
+        } else {
+            document.getElementById('upload-status').innerText = `⚠️ Completed with errors. ${successCount} success, ${errorCount} failed.`;
+            alert(`Upload completed:\n✅ ${successCount} successful\n❌ ${errorCount} failed\n\nErrors:\n${errors.slice(0, 5).join('\n')}`);
+        }
+        
+    } catch(error) {
+        document.getElementById('upload-progress').style.display = 'none';
+        alert(`Error: ${error.message}`);
+    }
 };
 
 window.downloadReport = () => {
