@@ -60,6 +60,42 @@
                 <h2>Hello! 👋</h2>
                 <p>Track your grain trades easily.</p>
             </div>
+            
+            <div class="card ai-insights-panel">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 24px;">🤖</span>
+                        <h3 style="margin: 0; color: white;">AI-Powered Insights</h3>
+                    </div>
+                    <button onclick="window.getSmartInsights()" class="ai-refresh-btn" id="smart-ai-btn">
+                        <span id="smart-ai-btn-text">🔮 Analyze</span>
+                    </button>
+                </div>
+                <div id="smart-insights-content" class="ai-content-white">
+                    <p style="color: #64748b; text-align: center; padding: 20px; font-size: 14px;">
+                        🎯 Click "Analyze" to get AI-powered predictions on which companies are most likely to book today.<br>
+                        <small style="color: #94a3b8;">Analyzes patterns, recency, and historical data</small>
+                    </p>
+                </div>
+            </div>
+            
+            <div class="card ai-panel">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 24px;">🤖</span>
+                        <h3 style="margin: 0;">AI Business Insights</h3>
+                    </div>
+                    <button onclick="window.getAIInsights()" class="add-btn" id="ai-analyze-btn">
+                        <span id="ai-btn-text">📊 Analyze</span>
+                    </button>
+                </div>
+                <div id="ai-insights-content" class="ai-content">
+                    <p style="color: #64748b; text-align: center; padding: 20px;">
+                        Click "Analyze" to get AI-powered insights about your top companies and business trends.
+                    </p>
+                </div>
+            </div>
+            
             <div class="stat-grid">
                 <div class="stat-box card">
                     <small>Monthly Brokerage</small>
@@ -76,18 +112,26 @@
             <div class="header-row">
                 <h2>Bookings</h2>
                 <div class="btn-group">
-                    <button onclick="window.exportBookings()" class="download-btn excel-btn">Excel</button>
+                    <button onclick="window.exportBookings()" class="download-btn excel-btn">📥 Export</button>
+                    <button onclick="window.downloadBookingTemplate()" class="download-btn excel-btn">📄 Template</button>
+                    <button onclick="window.triggerBulkBookingUpload()" class="download-btn img-btn">📤 Upload</button>
                     <button onclick="window.showBookingModal()" class="add-btn">+ Add</button>
                 </div>
             </div>
+            <input type="file" id="bulk-booking-upload-input" accept=".xlsx,.xls" style="display:none;" onchange="window.handleBulkBookingUpload(event)">
             <div class="table-container" id="bookings-table-container"></div>
         </div>
 
         <div id="view-companies" class="page-content" style="display:none;">
             <div class="header-row">
                 <h2>Companies</h2>
-                <button onclick="window.showCompanyModal()" class="add-btn">+ Add</button>
+                <div class="btn-group">
+                    <button onclick="window.downloadCompanyTemplate()" class="download-btn excel-btn">📄 Template</button>
+                    <button onclick="window.triggerBulkUpload()" class="download-btn img-btn">📤 Upload</button>
+                    <button onclick="window.showCompanyModal()" class="add-btn">+ Add</button>
+                </div>
             </div>
+            <input type="file" id="bulk-upload-input" accept=".xlsx,.xls" style="display:none;" onchange="window.handleBulkUpload(event)">
             <div id="companies-list"></div>
         </div>
 
@@ -173,6 +217,7 @@
     <div id="modal-booking" class="modal" style="display:none;">
         <div class="modal-content">
             <h3 id="booking-modal-title">New Booking</h3>
+            <input type="date" id="book-date" placeholder="Booking Date *">
             <input list="grain-list" id="book-grain" placeholder="Grain Type *">
             <datalist id="grain-list">
                 <option value="Wheat"><option value="Rice"><option value="Maize">
@@ -264,6 +309,14 @@
             <p>This action cannot be undone.</p>
             <button class="primary-btn" style="background: var(--danger);" onclick="window.confirmDeleteTemplate()">Yes, Delete</button>
             <button onclick="window.closeConfirmTemplateModal()" class="text-btn">Cancel</button>
+        </div>
+    </div>
+
+    <div id="modal-bulk-result" class="modal" style="display:none;">
+        <div class="modal-content">
+            <h3 id="bulk-result-title">Upload Results</h3>
+            <div id="bulk-result-content" style="margin: 20px 0;"></div>
+            <button class="primary-btn" onclick="window.closeBulkResultModal()">Close</button>
         </div>
     </div>
 
